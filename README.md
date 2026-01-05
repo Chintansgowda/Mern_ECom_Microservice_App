@@ -1,69 +1,227 @@
-# E-Commerce App – Docker Run Guide
+# MERN Microservices E‑Commerce Application
+
+This project is a **production‑style MERN microservices application** containerized with **Docker**, orchestrated using **Docker Compose**, and exposed via **Nginx reverse proxy with path‑based routing**.
 
 ---
 
-## Prerequisites
+## 🧱 Architecture Overview
 
-* Docker
-* Docker Compose
+```
+Browser
+   |
+   |  http://<EC2_PUBLIC_IP>
+   v
+Nginx (frontend-service :80)
+   |
+   |-- /user    → user-service :9001
+   |-- /product → product-service :9000
+   |-- /cart    → cart-service :9003
+   |
+MongoDB (mongo :27017)
+```
+
+* **Single entry point**: Nginx (port 80)
+* **Backend services are NOT directly exposed to users**
+* **Frontend calls APIs using relative paths** (`/user`, `/product`, `/cart`)
 
 ---
 
-## How to Run the Application
 
-From the project root directory:
+---
 
-```bash
-docker compose up --build -d
+## 🧩 Services
+
+### 1️ Frontend Service
+
+* React + Vite
+* Built using Node
+* Served using **Nginx**
+* Handles SPA routing + API reverse proxy
+
+### 2️ User Service
+
+* Node.js + Express
+* Handles:
+
+  * Register
+  * Login
+  * Profile
+* Port: `9001` (internal)
+
+### 3️ Product Service
+
+* Node.js + Express
+* Handles:
+
+  * Product listing
+  * Product details
+  * Category filters
+* Port: `9000` (internal)
+
+### 4️ Cart Service
+
+* Node.js + Express
+* Handles:
+
+  * Add to cart
+  * View cart
+  * Checkout
+* Port: `9003` (internal)
+
+### 5️ MongoDB
+
+* Shared database
+* Persistent storage using Docker volume
+
+---
+
+##  Accessing the Application
+
+###  Frontend (ONLY entry point)
+
+```
+http://<EC2_PUBLIC_IP>
+```
+
+Example:
+
+```
+http://52.201.236.208
 ```
 
 ---
 
-## Verify Running Containers
+##  API Access (via Nginx)
 
-```bash
-docker ps
+### User APIs
+
+```
+/user
+/user/login
+/user/register
 ```
 
-You should see containers for:
+### Product APIs
 
-* mongo
-* product
-* user
-* cart
-* frontend
-
----
-
-## Access the Application
-
-* Frontend: [http://localhost](http://localhost)
-* Product API: [http://localhost:9000](http://localhost:9000)
-* User API: [http://localhost:9001](http://localhost:9001)
-* Cart API: [http://localhost:9003](http://localhost:9003)
-
----
-
-## View Logs (Optional)
-
-```bash
-docker logs product
-docker logs user
-docker logs cart
-docker logs mongo
+```
+/product
+/product/<productId>
+/filter/category/<category>
 ```
 
+### Cart APIs
+
+```
+/cart
+/cart/checkout
+```
+
+⚠️ **Do NOT access backend services using ports directly** (`9000/9001/9003`).
+
 ---
 
-## Stop the Application
+## 🐳 Docker Compose Usage
 
-```bash
+### Start all services
+
+```
+docker compose up -d
+```
+
+### Stop all services
+
+```
 docker compose down
 ```
 
-To remove MongoDB data as well:
+### View running containers
 
-```bash
-docker compose down -v
 ```
-# Mern_ECom_Microservice_App
+docker ps
+```
+
+---
+
+## 💾 Persistent Storage
+
+MongoDB uses a named Docker volume:
+
+```
+volumes:
+  mongo-data:
+```
+
+This ensures **data is not lost** when containers restart.
+
+---
+
+##  Environment Variables
+
+Each backend service uses an `.env` file (loaded via Docker Compose):
+
+Example (`env/product.env`):
+
+```
+PORT=9000
+MONGO_HOST=mongo
+MONGO_PORT=27017
+MONGO_DBNAME=productdb
+```
+
+Mongo hostname is `mongo` because Docker provides **internal DNS resolution**.
+
+---
+
+##  Important Design Decisions
+
+* ✔ Frontend never calls backend ports directly
+* ✔ Nginx acts as **API Gateway**
+* ✔ Path‑based routing instead of multiple ports
+* ✔ Docker service names act as DNS hostnames
+* ✔ Production‑ready structure
+
+---
+
+##  Troubleshooting
+
+### Frontend loads but APIs fail
+
+* Check `nginx.conf` path mappings
+* Ensure frontend uses **relative paths** (`/product`, not `http://localhost:9000`)
+
+### Mongo connection issues
+
+* Verify `MONGO_DBNAME` matches inserted data
+* Check Mongo container is running
+
+### Check logs
+
+```
+docker logs frontend-service
+docker logs user-service
+docker logs product-service
+docker logs cart-service
+```
+
+---
+
+##  Future Enhancements
+
+* HTTPS with TLS
+* Remove backend port exposure completely
+* Rate limiting in Nginx
+* Kubernetes + Ingress migration
+* CI/CD pipeline
+
+---
+
+##  Final Note
+
+This setup follows **real industry practices**:
+
+* Microservices
+* API gateway pattern
+* Secure networking
+* Clean separation of concerns
+
+🎉 **Well done on building a production‑style MERN system!**
