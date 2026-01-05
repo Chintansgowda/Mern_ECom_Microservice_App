@@ -1,76 +1,83 @@
 version: "3.9"
 
 services:
-
   # -------------------------
-  # MongoDB (Database)
+  # MongoDB (Shared)
   # -------------------------
   mongo:
     image: mongo:6
     container_name: mongo
+    restart: always
     volumes:
       - mongo-data:/data/db
+    ports:
+      - "27017:27017"
     networks:
-      - ecommerce-net
-
-
-  # -------------------------
-  # Product Service
-  # -------------------------
-  product:
-    build: ./Product
-    container_name: product
-    env_file:
-      - ./env/product.env
-    depends_on:
-      - mongo
-    networks:
-      - ecommerce-net
-
+      - mern-net
 
   # -------------------------
   # User Service
   # -------------------------
-  user:
+  user-service:
     build: ./User
-    container_name: user
+    image: userimg
+    container_name: user-service
     env_file:
       - ./env/user.env
     depends_on:
       - mongo
+    ports:
+      - "9001:9001"
     networks:
-      - ecommerce-net
+      - mern-net
 
+  # -------------------------
+  # Product Service
+  # -------------------------
+  product-service:
+    build: ./Product
+    image: productimg
+    container_name: product-service
+    env_file:
+      - ./env/product.env
+    depends_on:
+      - mongo
+    ports:
+      - "9000:9000"
+    networks:
+      - mern-net
 
   # -------------------------
   # Cart Service
   # -------------------------
-  cart:
+  cart-service:
     build: ./Cart
-    container_name: cart
+    image: cartimg
+    container_name: cart-service
     env_file:
       - ./env/cart.env
     depends_on:
       - mongo
+    ports:
+      - "9003:9003"
     networks:
-      - ecommerce-net
-
+      - mern-net
 
   # -------------------------
   # Frontend (React + Nginx)
   # -------------------------
-  frontend:
+  frontend-service:
     build: ./front-end
-    container_name: frontend
-    ports:
-      - "80:80"          # Only exposed entry point
+    image: frontendimg
+    container_name: frontend-service
     depends_on:
-      - product
-      - user
-      - cart
+      - user-service
+      - product-service
+      - cart-service
+    ports:
+      - "80:80"
     networks:
-      - ecommerce-net
-
+      - mern-net
 
 # -------------------------
 # Volumes
@@ -78,107 +85,9 @@ services:
 volumes:
   mongo-data:
 
-
 # -------------------------
 # Network
 # -------------------------
 networks:
-  ecommerce-net:
-    driver: bridge
-
-
-
-
-version: "3.9"
-
-services:
-
-  # -------------------------
-  # MongoDB
-  # -------------------------
-  mongo:
-    image: mongo:6
-    container_name: mongo
-    volumes:
-      - mongo-data:/data/db
-    networks:
-      - ecommerce-net
-
-
-  # -------------------------
-  # Product Service
-  # -------------------------
-  product:
-    build: ./Product
-    container_name: product
-    ports:
-      - "9000:9000"        # 👈 Direct HTTP access
-    env_file:
-      - ./env/product.env
-    depends_on:
-      - mongo
-    networks:
-      - ecommerce-net
-
-
-  # -------------------------
-  # User Service
-  # -------------------------
-  user:
-    build: ./User
-    container_name: user
-    ports:
-      - "9001:9001"        # 👈 Direct HTTP access
-    env_file:
-      - ./env/user.env
-    depends_on:
-      - mongo
-    networks:
-      - ecommerce-net
-
-
-  # -------------------------
-  # Cart Service
-  # -------------------------
-  cart:
-    build: ./Cart
-    container_name: cart
-    ports:
-      - "9003:9003"        # 👈 Direct HTTP access
-    env_file:
-      - ./env/cart.env
-    depends_on:
-      - mongo
-    networks:
-      - ecommerce-net
-
-
-  # -------------------------
-  # Frontend (React + Nginx)
-  # -------------------------
-  frontend:
-    build: ./front-end
-    container_name: frontend
-    ports:
-      - "80:80"            # 👈 Main entry point
-    depends_on:
-      - product
-      - user
-      - cart
-    networks:
-      - ecommerce-net
-
-
-# -------------------------
-# Volumes
-# -------------------------
-volumes:
-  mongo-data:
-
-
-# -------------------------
-# Network
-# -------------------------
-networks:
-  ecommerce-net:
+  mern-net:
     driver: bridge
